@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design by Contract</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background-color: #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            margin: 0;
+            padding: 40px 0;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .slide {
+            background-color: #FDFCF0;
+            border-radius: 8px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            width: 1280px;
+            height: 720px;
+            padding: 60px 80px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 10px; height: 100%;
+            background-color: #001F3F;
+            z-index: 10;
+        }
+
+        h1, h2, h3, .slide-title {
+            color: #001F3F;
+            font-family: 'Merriweather', serif;
+            margin: 0;
+        }
+
+        h1 { font-size: 54px; font-weight: 700; line-height: 1.2; margin-bottom: 20px; }
+        .slide-title { font-size: 40px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 30px; }
+        h3 { font-size: 26px; color: #11CAA0; margin-bottom: 10px; }
+        p, li, td, th { font-size: 18px; line-height: 1.6; color: #334155; }
+        ul { margin: 0; padding-left: 20px; }
+
+        .subtitle { font-size: 24px; color: #64748b; margin-top: 0; margin-bottom: 25px; font-weight: 400; }
+        .slide-title + .subtitle { margin-top: -10px; }
+
+        code {
+            background: #f1f5f9;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #001F3F;
+        }
+        .trace-box code { background: transparent; padding: 0; color: #e2e8f0; }
+
+        .content { display: flex; flex-direction: column; flex-grow: 1; justify-content: center; width: 100%; min-height: 0; }
+        .content-top { justify-content: flex-start; padding-top: 0; }
+        .center-layout { text-align: center; align-items: center; justify-content: center; }
+        .center-layout hr { width: 80px; border: 3px solid #11CAA0; margin-bottom: 30px; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; width: 100%; align-items: start; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; width: 100%; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; }
+
+        .card { background-color: #fff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .card .icon { font-size: 32px; color: #001F3F; margin-bottom: 15px; }
+        .card p { font-size: 16px; margin: 0; }
+
+        table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 10px; }
+        th { background-color: #001F3F; color: #fff; text-align: left; padding: 15px; font-family: 'DM Sans', sans-serif; font-size: 16px; }
+        td { padding: 15px; border-bottom: 1px solid #e2e8f0; font-size: 16px; vertical-align: top; }
+        tr:nth-child(even) td { background-color: #f8fafc; }
+
+        .flow-path { display: flex; align-items: center; justify-content: space-between; background: #fff; padding: 20px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-top: 20px; }
+        .flow-step { text-align: center; font-weight: 700; color: #001F3F; font-size: 16px; flex: 1; }
+        .flow-arrow { color: #11CAA0; font-size: 20px; padding: 0 10px; }
+
+        .checklist { list-style: none; padding: 0; margin: 0; }
+        .checklist li { position: relative; padding-left: 40px; margin-bottom: 16px; font-size: 17px; font-weight: 500; }
+        .checklist li::before { content: '\f00c'; font-family: 'FontAwesome'; position: absolute; left: 0; color: #11CAA0; font-size: 20px; }
+
+        .trace-box { background: #001F3F; color: white; padding: 20px 25px; border-radius: 8px; font-family: monospace; font-size: 14px; line-height: 1.7; margin-top: 15px; white-space: pre-wrap; }
+        .trace-box span { color: #11CAA0; font-weight: bold; }
+
+        .quote-box {
+            background: #fff;
+            border-left: 5px solid #11CAA0;
+            padding: 25px 30px;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            margin-top: 10px;
+        }
+        .quote-box p { font-size: 20px; font-style: italic; color: #001F3F; margin: 0; line-height: 1.5; }
+        .quote-box .attribution { font-size: 14px; color: #64748b; font-style: normal; margin-top: 12px; }
+
+        .highlight-box {
+            background: #001F3F;
+            color: #fff;
+            padding: 25px 30px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .highlight-box p { color: #e2e8f0; margin: 0; font-size: 18px; }
+        .highlight-box strong { color: #11CAA0; }
+
+        .compact-slide .slide-title { margin-bottom: 10px; }
+        .compact-slide .subtitle { font-size: 20px; margin-bottom: 18px; }
+        .compact-slide p, .compact-slide li { font-size: 17px; }
+        .compact-slide .trace-box { font-size: 12px; line-height: 1.55; padding: 14px 18px; margin-top: 0; }
+        .compact-slide .card { padding: 20px; }
+        .vs-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+            color: #11CAA0;
+            font-family: 'Merriweather', serif;
+        }
+
+        .vs-panel h3 { font-size: 22px; margin-bottom: 12px; }
+        .vs-panel p { font-size: 15px; }
+        .vs-panel .trace-box { font-size: 10px; line-height: 1.4; padding: 12px 14px; margin-top: 10px; }
+        .compact-slide .card h3 { font-size: 18px !important; }
+
+        .card ul { font-size: 16px; line-height: 1.7; }
+        .card ul li { margin-bottom: 6px; color: #334155; }
+
+        @media print {
+            body { background: #fff; padding: 0; gap: 0; }
+            .slide { box-shadow: none; page-break-after: always; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Frame 1: Title -->
+<div class="slide center-layout">
+    <div class="content center-layout">
+        <hr>
+        <h1>Design by Contract</h1>
+        <p class="subtitle" style="margin-bottom: 0;">Clear agreements that make software modules reliable</p>
+    </div>
+</div>
+
+<!-- Frame 2: Why Contracts? -->
+<div class="slide">
+    <h2 class="slide-title">Why Contracts?</h2>
+    <div class="content">
+        <div class="grid-2">
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-file-contract"></i></div>
+                <h3>What a Contract Does</h3>
+                <p>A contract sets out <strong>rights</strong>, <strong>responsibilities</strong>, and what happens if either side breaks the agreement.</p>
+            </div>
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-briefcase"></i></div>
+                <h3>Employment Example</h3>
+                <p>You agree to work certain hours and follow rules. The company pays you a salary and benefits. Both sides meet their obligations — everyone benefits.</p>
+            </div>
+        </div>
+        <div class="highlight-box" style="margin-top: 30px;">
+            <p>People have used contracts for thousands of years to interact fairly. <strong>Can we use the same idea so software modules interact fairly?</strong> The answer is <strong>yes</strong>.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Why It Matters -->
+<div class="slide">
+    <h2 class="slide-title">Why It Matters</h2>
+    <div class="content">
+        <div class="grid-4">
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-lightbulb"></i></div>
+                <h3 style="font-size: 20px;">Prevents Wrong Assumptions</h3>
+                <p>Clear contracts make requirements explicit — no guesswork about what a function expects or returns.</p>
+            </div>
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-bug-slash"></i></div>
+                <h3 style="font-size: 20px;">Reduces Runtime Bugs</h3>
+                <p>Invalid inputs are caught early before they cause subtle, hard-to-debug issues later.</p>
+            </div>
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-shield"></i></div>
+                <h3 style="font-size: 20px;">Improves Reliability</h3>
+                <p>Contracts verify correctness at runtime and fail with clear error messages.</p>
+            </div>
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                <h3 style="font-size: 20px;">Easier Debugging</h3>
+                <p>When something fails, contracts show exactly what failed and why.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- What Is DBC? -->
+<div class="slide">
+    <h2 class="slide-title">What Is Design by Contract?</h2>
+    <div class="content">
+        <div class="grid-2">
+            <div>
+                <p><strong>Design by Contract (DBC)</strong> is a way to document and check what your functions and classes <strong>must do</strong> and <strong>must not do</strong>.</p>
+                <p style="margin-top: 20px;">Contracts can be enforced with typed parameters, exceptions, and documentation — making rules explicit in your code.</p>
+                <p style="margin-top: 20px;">The examples in this presentation use <strong>PHP</strong>; the same ideas apply to any language.</p>
+            </div>
+            <div class="quote-box">
+                <p>What is a correct program? One that does <strong>no more</strong> and <strong>no less</strong> than it claims to do.</p>
+                <p class="attribution">Documenting and checking that claim is the heart of DBC.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Three Parts of Every Contract -->
+<div class="slide">
+    <h2 class="slide-title">Three Parts of Every Contract</h2>
+    <div class="content">
+        <div class="grid-3">
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-arrow-right-to-bracket"></i></div>
+                <h3>Precondition</h3>
+                <p>What must be <strong>true before</strong> the function is called — the function's requirements.</p>
+                <p style="margin-top: 12px;">Don't call a function unless its preconditions are already met. It is the <strong>caller's job</strong> to pass good data.</p>
+            </div>
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-arrow-right-from-bracket"></i></div>
+                <h3>Postcondition</h3>
+                <p>What the function <strong>guarantees after</strong> it finishes — the state when it is done.</p>
+                <p style="margin-top: 12px;">A postcondition means the function will finish — infinite loops are not allowed.</p>
+            </div>
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <h3>Invariant</h3>
+                <p>A condition that is <strong>always true</strong> from the caller's point of view.</p>
+                <p style="margin-top: 12px;">It may be broken briefly inside the function, but it must be true again before control returns to the caller.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Frame 5: The Deal -->
+<div class="slide">
+    <h2 class="slide-title">The Deal</h2>
+    <div class="content">
+        <div class="quote-box">
+            <p>If all preconditions are met by the caller, the function guarantees that all postconditions and invariants will be true when it completes.</p>
+        </div>
+        <div class="grid-2" style="margin-top: 30px;">
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <h3>If the Contract Breaks</h3>
+                <p>A remedy is invoked — maybe an exception is raised, or the program stops.</p>
+                <p style="margin-top: 12px;"><strong>Breaking a contract is a bug.</strong> It should never happen in normal use.</p>
+            </div>
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-user-check"></i></div>
+                <h3>Not for User Input</h3>
+                <p>Preconditions are <strong>not</strong> for checking user input on a form or console.</p>
+                <p style="margin-top: 12px;">User validation belongs in the controller or form layer — before your function is ever called.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Caller vs Function Responsibility -->
+<div class="slide">
+    <h2 class="slide-title">Caller vs Function Responsibility</h2>
+    <div class="content">
+        <div class="grid-3">
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-user"></i></div>
+                <h3 style="font-size: 22px;">The Caller</h3>
+                <ul>
+                    <li>Provide valid inputs</li>
+                    <li>Meet all preconditions</li>
+                    <li>Respect parameter constraints</li>
+                    <li>Handle documented exceptions</li>
+                </ul>
+            </div>
+            <div class="card" style="text-align: center;">
+                <div class="icon"><i class="fa-solid fa-handshake"></i></div>
+                <h3 style="font-size: 22px;">Mutual Agreement</h3>
+                <p>Both sides work together for <strong>reliable, predictable behavior</strong> — code that is easier to understand, test, and maintain.</p>
+            </div>
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-gears"></i></div>
+                <h3 style="font-size: 22px;">The Function</h3>
+                <ul>
+                    <li>Guarantee correct output</li>
+                    <li>Meet all postconditions</li>
+                    <li>Maintain invariants</li>
+                    <li>Document behavior in PHPDoc</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Design with Contracts -->
+<div class="slide">
+    <h2 class="slide-title">Design with Contracts</h2>
+    <p class="subtitle">Be strict in what you accept — promise as little as possible in return</p>
+    <div class="content">
+        <div class="grid-2">
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-filter"></i></div>
+                <h3>Be Strict In</h3>
+                <p>Be strict about what you will accept <strong>before</strong> you begin.</p>
+            </div>
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-hand-holding"></i></div>
+                <h3>Promise Little Out</h3>
+                <p>Promise as <strong>little as possible</strong> in return.</p>
+            </div>
+        </div>
+        <div class="highlight-box" style="margin-top: 30px;">
+            <p>If your contract says you'll accept <strong>anything</strong> and promise <strong>the world</strong>, you have a lot of code to write.</p>
+            <p style="margin-top: 15px;"><strong>DBC forces you to think</strong> before you write the function body.</p>
+        </div>
+    </div>
+</div>
+
+<!-- How to Implement DBC -->
+<div class="slide">
+    <h2 class="slide-title">How to Implement DBC</h2>
+    <div class="content">
+        <p style="font-size: 20px; margin-bottom: 25px;"><strong>Before you write code</strong>, write down:</p>
+        <div class="flow-path">
+            <div class="flow-step">Input domain<br>&amp; range</div>
+            <div class="flow-arrow">➔</div>
+            <div class="flow-step">Boundary<br>conditions</div>
+            <div class="flow-arrow">➔</div>
+            <div class="flow-step">What the function<br>promises</div>
+            <div class="flow-arrow">➔</div>
+            <div class="flow-step">What it does<br><strong>not</strong> promise</div>
+        </div>
+        <div class="grid-2" style="margin-top: 30px;">
+            <div class="card">
+                <h3 style="font-size: 20px;">Without This</h3>
+                <p>You fall back to <strong>programming by coincidence</strong> — where many projects start, finish, and fail.</p>
+            </div>
+            <div class="card">
+                <h3 style="font-size: 20px;">In Practice</h3>
+                <p>Put contracts in PHPDoc, typed parameters, exceptions, and tests — you still get real benefit even without built-in DBC syntax.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Invariants vs Assertions -->
+<div class="slide compact-slide">
+    <h2 class="slide-title">Invariants vs Assertions</h2>
+    <p class="subtitle">PHP examples below — same ideas apply in any language</p>
+    <div class="content content-top">
+        <div style="display: grid; grid-template-columns: 1fr 50px 1fr; gap: 16px; align-items: stretch;">
+            <div class="card vs-panel">
+                <h3><i class="fa-solid fa-shield-halved" style="color: #001F3F; margin-right: 8px;"></i> Invariants</h3>
+                <p><strong>What:</strong> Rules that must stay true from the caller's view — before and after every call.</p>
+                <p style="margin-top: 10px;"><strong>Scope:</strong> Object state or data passed between functions.</p>
+                <p style="margin-top: 10px;"><strong>Purpose:</strong> Protect consistency over time, not just one input check.</p>
+                <div class="trace-box"><span>// PHP example — class invariant</span>
+private float $balance = 0;
+
+public function withdraw(float $amount): void
+{
+    $this-&gt;balance -= $amount;
+    assert($this-&gt;balance &gt;= 0, 'Balance invariant');
+}</div>
+            </div>
+            <div class="vs-divider">vs</div>
+            <div class="card vs-panel">
+                <h3><i class="fa-solid fa-check-double" style="color: #001F3F; margin-right: 8px;"></i> Assertions</h3>
+                <p><strong>What:</strong> Runtime checks that a specific condition is true at a point in code.</p>
+                <p style="margin-top: 10px;"><strong>Scope:</strong> One moment — entry, exit, or mid-function.</p>
+                <p style="margin-top: 10px;"><strong>Purpose:</strong> Catch contract breaks immediately (dev, test, or prod).</p>
+                <div class="trace-box"><span>// PHP examples — assertion variants</span>
+assert($amount &gt; 0);                    // basic
+assert($x &gt;= 0, 'Non-negative');      // with message
+if ($amount &lt;= 0) throw new ...;       // exception (prod)
+function f(int $n): int { ... }         // type hint</div>
+            </div>
+        </div>
+        <div class="highlight-box" style="margin-top: 16px; padding: 16px 20px;">
+            <p style="font-size: 15px;"><strong>In short:</strong> An <strong>invariant</strong> is the ongoing rule your module must obey. An <strong>assertion</strong> is how you <em>check</em> preconditions, postconditions, or invariants at runtime. Assertions can be disabled in production; invariants should still be enforced via exceptions where it matters.</p>
+        </div>
+    </div>
+</div>
+
+<!-- PHP Deposit Example -->
+<div class="slide compact-slide">
+    <h2 class="slide-title">Example: PHP Deposit</h2>
+    <p class="subtitle">Banking deposit — preconditions and postconditions</p>
+    <div class="content content-top">
+        <div class="trace-box"><span>// PRE + POST contract checks</span>
+function acceptDeposit(int $accountId, float $amount): int
+{
+    <span>// PRE: amount must be positive</span>
+    if ($amount &lt;= 0) {
+        throw new InvalidArgumentException('Amount must be greater than zero.');
+    }
+    <span>// PRE: account must be open</span>
+    if (!accountIsOpen($accountId)) {
+        throw new RuntimeException('Account is not open.');
+    }
+
+    $transactionId = createTransaction($accountId, 'deposit', $amount);
+
+    <span>// POST: transaction must be recorded</span>
+    if (!transactionExistsOnAccount($accountId, $transactionId)) {
+        throw new LogicException('Deposit was not recorded.');
+    }
+
+    return $transactionId;
+}</div>
+        <div class="grid-3" style="margin-top: 16px;">
+            <div class="card"><h3>Preconditions</h3><p>Positive amount. Account must be open.</p></div>
+            <div class="card"><h3>Postcondition</h3><p>Transaction id exists on the account.</p></div>
+            <div class="card"><h3>On failure</h3><p>Exception thrown before bad state is saved.</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- PHP Withdraw Example -->
+<div class="slide compact-slide">
+    <h2 class="slide-title">Example: PHP Withdraw</h2>
+    <p class="subtitle">Bank account withdrawal — preconditions, postcondition, and invariant</p>
+    <div class="content content-top">
+        <div class="trace-box"><span>// PRE + POST contract checks (not user-form validation)</span>
+function withdraw(int $balance, int $amount): int
+{
+    if ($amount &lt;= 0) {
+        throw new InvalidArgumentException('Amount must be greater than zero.');
+    }
+    if ($amount &gt; $balance) {
+        throw new RuntimeException('Insufficient balance.');
+    }
+
+    $newBalance = $balance - $amount;
+
+    <span>// POSTCONDITION: output guarantee</span>
+    if ($newBalance &lt; 0) {
+        throw new LogicException('Balance cannot be negative.');
+    }
+
+    return $newBalance;
+}</div>
+        <div class="grid-3" style="margin-top: 18px;">
+            <div class="card"><h3 style="font-size: 18px;">Preconditions</h3><p>Positive amount and sufficient balance.</p></div>
+            <div class="card"><h3 style="font-size: 18px;">Postcondition</h3><p>Non-negative final balance.</p></div>
+            <div class="card"><h3 style="font-size: 18px;">Invariant</h3><p>Balance never goes below zero.</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- What the withdraw() example shows -->
+<div class="slide compact-slide">
+    <h2 class="slide-title">What This Example Shows</h2>
+    <p class="subtitle">Lessons from the <code>withdraw()</code> function above</p>
+    <div class="content content-top">
+        <div class="grid-2">
+            <div class="card">
+                <h3 style="font-size: 20px;">Preconditions Protect Inputs</h3>
+                <p>Validates <code>$amount</code> is positive and balance is sufficient <strong>before</strong> processing. No unexpected inputs break the logic.</p>
+            </div>
+            <div class="card">
+                <h3 style="font-size: 20px;">Postconditions Protect Outputs</h3>
+                <p>Guarantees balance never goes negative <strong>before returning</strong>. Caller receives exactly what was promised.</p>
+            </div>
+            <div class="card">
+                <h3 style="font-size: 20px;">Exceptions Are Production-Safe</h3>
+                <p>Typed exceptions with clear messages — safe failure without silent corruption.</p>
+            </div>
+            <div class="card">
+                <h3 style="font-size: 20px;">Contracts Enable Predictability</h3>
+                <p>Self-documenting, testable behavior — no hidden requirements or surprises.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Who Checks Preconditions -->
+<div class="slide">
+    <h2 class="slide-title">Who Checks Preconditions?</h2>
+    <div class="content">
+        <p><strong>You</strong> enforce preconditions with <code>if</code>, typed parameters, or exceptions — before the main logic runs.</p>
+        <div class="flow-path" style="margin-top: 25px;">
+            <div class="flow-step">User submits<br>amount in form</div>
+            <div class="flow-arrow">➔</div>
+            <div class="flow-step">Controller<br>validates input</div>
+            <div class="flow-arrow">➔</div>
+            <div class="flow-step"><code>withdraw()</code><br>runs safely</div>
+        </div>
+        <div class="highlight-box" style="margin-top: 25px;">
+            <p><code>withdraw()</code> requires a positive amount and sufficient balance. If the user enters bad data, the <strong>controller or caller</strong> must handle it — show an error, re-prompt, or reject the request. That is <strong>not withdraw()'s job</strong> to fix user mistakes.</p>
+            <p style="margin-top: 12px;">Document the contract in PHPDoc → callers know what valid input looks like before they call your function.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Semantic Invariants -->
+<div class="slide">
+    <h2 class="slide-title">Semantic Invariants</h2>
+    <p class="subtitle">Inviolate requirements — a "philosophical contract"</p>
+    <div class="content">
+        <div class="grid-2">
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-credit-card"></i></div>
+                <h3>Debit Card Switch</h3>
+                <p>A user must <strong>never</strong> have the same transaction applied to their account twice.</p>
+                <p style="margin-top: 12px;">On failure, err on the side of <strong>not processing</strong> rather than processing a duplicate.</p>
+            </div>
+            <div class="card">
+                <div class="icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                <h3>Laws vs Policies</h3>
+                <p>Semantic invariants are fixed laws central to the meaning of a system — not policies that change with management.</p>
+            </div>
+        </div>
+        <div class="quote-box" style="margin-top: 25px;">
+            <p><strong>"Err in favor of the consumer."</strong></p>
+            <p class="attribution">A clear, unambiguous contract with all users of the system. Document it — in a requirements doc or on the team whiteboard.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Best Practices (from original deck) -->
+<div class="slide compact-slide">
+    <h2 class="slide-title">Best Practices</h2>
+    <div class="content content-top">
+        <div class="grid-2">
+            <div class="card">
+                <h3 style="font-size: 20px;">01 — Keep Contracts Simple</h3>
+                <p>Focus on essential validations only. Validate critical business rules and safety-critical conditions. Avoid trivial checks.</p>
+            </div>
+            <div class="card">
+                <h3 style="font-size: 20px;">02 — Fail Fast with Clear Errors</h3>
+                <p>Throw exceptions immediately when contracts are violated. Use descriptive messages and appropriate exception types.</p>
+            </div>
+            <div class="card">
+                <h3 style="font-size: 20px;">03 — Document Expectations</h3>
+                <p>Use PHPDoc for parameters. Document preconditions and postconditions. Provide usage examples.</p>
+            </div>
+            <div class="card">
+                <h3 style="font-size: 20px;">04 — Use Exceptions for Safety</h3>
+                <p>Prefer exceptions over error codes — harder to ignore, better context. Don't swallow exceptions silently.</p>
+            </div>
+        </div>
+        <p style="margin-top: 20px; font-size: 16px; color: #64748b;"><strong>Pro tip:</strong> Start with preconditions and postconditions. Add invariants as you get comfortable.</p>
+    </div>
+</div>
+
+<!-- Key Takeaways (from original deck) -->
+<div class="slide center-layout">
+    <div class="content center-layout">
+        <h2 class="slide-title" style="border: none; margin-bottom: 40px;">Key Takeaways</h2>
+        <div class="grid-3" style="text-align: left;">
+            <div class="card">
+                <h3 style="font-size: 22px;">Clear Rules = Safer Code</h3>
+                <p>Explicit contracts mean everyone knows what to expect — clear agreements that prevent bugs before they happen.</p>
+            </div>
+            <div class="card">
+                <h3 style="font-size: 22px;">Better Code Quality</h3>
+                <p>More reliable, maintainable code. Easier debugging, simpler testing, production-ready functions with confidence.</p>
+            </div>
+            <div class="card">
+                <h3 style="font-size: 22px;">Start Today</h3>
+                <p>Begin with simple preconditions and clear error messages. Expand gradually — your team will thank you.</p>
+            </div>
+        </div>
+        <p style="margin-top: 36px; font-size: 26px; color: #001F3F; font-family: 'Merriweather', serif;"><strong>Design by Contract</strong> — reliable code through clear agreements</p>
+    </div>
+</div>
+
+</body>
+</html>
